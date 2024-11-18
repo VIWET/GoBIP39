@@ -12,15 +12,16 @@ import (
 
 	bip39 "github.com/viwet/GoBIP39"
 	"github.com/viwet/GoBIP39/words"
+	"golang.org/x/text/unicode/norm"
 )
 
 func Test_BIP39(t *testing.T) {
-	f := func(t *testing.T, fileName string) {
+	f := func(t *testing.T, fileName string, list words.List) {
 		tests := LoadTestVector(t, fileName)
 		name := strings.Split(path.Base(fileName), ".")[0]
 		for _, test := range tests {
 			t.Run(name, func(t *testing.T) {
-				mnemonic, err := bip39.ExtractMnemonic(test.Entropy, words.English)
+				mnemonic, err := bip39.ExtractMnemonic(test.Entropy, list)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -33,7 +34,7 @@ func Test_BIP39(t *testing.T) {
 					)
 				}
 
-				entropy, err := bip39.ExtractEntropy(test.Mnemonic, words.English)
+				entropy, err := bip39.ExtractEntropy(test.Mnemonic, list)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -46,7 +47,7 @@ func Test_BIP39(t *testing.T) {
 					)
 				}
 
-				seed, err := bip39.ExtractSeed(test.Mnemonic, words.English, "TREZOR")
+				seed, err := bip39.ExtractSeed(test.Mnemonic, list, "TREZOR")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -62,7 +63,16 @@ func Test_BIP39(t *testing.T) {
 		}
 	}
 
-	f(t, "tests/english.json")
+	f(t, "tests/chinese_simplified.json", words.ChineseSimplified)
+	f(t, "tests/chinese_traditional.json", words.ChineseTraditional)
+	f(t, "tests/czech.json", words.Czech)
+	f(t, "tests/english.json", words.English)
+	f(t, "tests/french.json", words.French)
+	f(t, "tests/italian.json", words.Italian)
+	f(t, "tests/japanese.json", words.Japanese)
+	f(t, "tests/korean.json", words.Korean)
+	f(t, "tests/portuguese.json", words.Portuguese)
+	f(t, "tests/spanish.json", words.Spanish)
 }
 
 type Test struct {
@@ -92,7 +102,7 @@ func LoadTestVector(t *testing.T, path string) []Test {
 			t.Fatal(err)
 		}
 
-		mnemonic := strings.Split(test[1], " ")
+		mnemonic := bip39.NormalizeMnemonic(strings.Split(norm.NFKD.String(test[1]), " "))
 
 		seed, err := hex.DecodeString(test[2])
 		if err != nil {

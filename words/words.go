@@ -1,13 +1,25 @@
 package words
 
 import (
+	"bufio"
+	"bytes"
+	"embed"
 	"fmt"
+	"hash/crc32"
+	"path"
+	"strings"
 
 	"golang.org/x/text/unicode/norm"
 )
 
+//go:embed bip39/*.txt
+var bip39 embed.FS
+
 // Number of words in BIP-39 list
 const BIP39WordsCount = 1 << 11
+
+// List is a list getter function
+type List func() *list
 
 // BIP-0039 words list container
 type list struct {
@@ -49,4 +61,39 @@ func abbreviate(word string) string {
 	unique := []rune(word)[:4]
 
 	return string(unique)
+}
+
+func newList(fileName string, checksum uint32) list {
+	data, err := bip39.ReadFile(fileName)
+	if err != nil {
+		panic(err)
+	}
+
+	if checksum != crc32.ChecksumIEEE(data) {
+		panic(fmt.Sprintf("%s invalid checksum", fileName))
+	}
+
+	var (
+		scanner = bufio.NewScanner(bytes.NewBuffer(data))
+		index   = 0
+
+		language = strings.Split(path.Base(fileName), ".")[0]
+
+		words   [BIP39WordsCount]string
+		indices = make(map[string]int, BIP39WordsCount)
+	)
+
+	for scanner.Scan() {
+		word := scanner.Text()
+		words[index] = word
+		indices[abbreviate(word)] = index
+
+		index++
+	}
+
+	return list{
+		language: language,
+		words:    words,
+		indices:  indices,
+	}
 }

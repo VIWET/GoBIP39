@@ -12,7 +12,6 @@ import (
 
 	bip39 "github.com/viwet/GoBIP39"
 	"github.com/viwet/GoBIP39/words"
-	"golang.org/x/text/unicode/norm"
 )
 
 func Test_BIP39(t *testing.T) {
@@ -102,7 +101,7 @@ func LoadTestVector(t *testing.T, path string) []Test {
 			t.Fatal(err)
 		}
 
-		mnemonic := bip39.NormalizeMnemonic(strings.Split(norm.NFKD.String(test[1]), " "))
+		mnemonic := bip39.SplitMnemonic(test[1])
 
 		seed, err := hex.DecodeString(test[2])
 		if err != nil {

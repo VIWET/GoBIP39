@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/viwet/GoBIP39/words"
 	"golang.org/x/text/unicode/norm"
@@ -96,6 +97,12 @@ func NormalizeMnemonic(mnemonic []string) []string {
 	}
 
 	return mnemonic
+}
+
+// SplitMnemonic splits NFKD normalized string into words
+func SplitMnemonic(mnemonic string) []string {
+	mnemonic = norm.NFKD.String(mnemonic)
+	return strings.Split(mnemonic, " ")
 }
 
 // ValidateMnemonic returns error if mnemonic has invalid length or it is impossible to extract entropy

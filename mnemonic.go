@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/viwet/GoBIP39/words"
+	"golang.org/x/text/unicode/norm"
 )
 
 const (
@@ -18,8 +19,12 @@ const (
 	LengthDivisor = 3
 )
 
-// ErrInvalidMnemonicLength
-var ErrInvalidMnemonicLength = errors.New("mnemonic length must be one of 12, 15, 18, 21 or 24")
+var (
+	// ErrInvalidMnemonicLength
+	ErrInvalidMnemonicLength = errors.New("mnemonic length must be one of 12, 15, 18, 21 or 24")
+	// ErrInvalidMnemonicChecksum
+	ErrInvalidMnemonicChecksum = errors.New("invalid mnemonic checksum")
+)
 
 // ExtractMnemonic returns mnemonic phrase based on given entropy and language
 func ExtractMnemonic(entropy Entropy, list words.List) ([]string, error) {
@@ -49,4 +54,60 @@ func ExtractMnemonic(entropy Entropy, list words.List) ([]string, error) {
 	}
 
 	return mnemonic, nil
+}
+
+// ExtractEntropy returns entropy based on given mnemonic phrase and language
+func ExtractEntropy(mnemonic []string, list words.List) (Entropy, error) {
+	if !isValidMnemonicLength(len(mnemonic)) {
+		return nil, ErrInvalidMnemonicLength
+	}
+
+	var (
+		words  = list()
+		bitlen = uint(len(mnemonic)) * GroupBitlen
+		e      = new(big.Int).SetUint64(0)
+	)
+
+	for _, word := range mnemonic {
+		wordIndex, err := words.IndexOf(word)
+		if err != nil {
+			return nil, fmt.Errorf("cannot extract entropy: %w", err)
+		}
+		e.Lsh(e, GroupBitlen)
+		// wordIndex is always positive integer less than 2048
+		e.Add(e, new(big.Int).SetUint64(uint64(wordIndex)))
+	}
+
+	checksumEntorpy := ChecksumEntropy(PadLeftToBitlen(e.Bytes(), bitlen))
+	entropy, checksum := checksumEntorpy.RemoveChecksum()
+
+	if !entropy.IsValidChecksum(checksum) {
+		return nil, ErrInvalidMnemonicChecksum
+	}
+
+	return entropy, nil
+}
+
+// NormalizeMnemonic returns NFKD normalized UTF-8 encoded mnemonic
+func NormalizeMnemonic(mnemonic []string) []string {
+	for i, word := range mnemonic {
+		mnemonic[i] = norm.NFKD.String(word)
+	}
+
+	return mnemonic
+}
+
+// ValidateMnemonic returns error if mnemonic has invalid length or it is impossible to extract entropy
+func ValidateMnemonic(mnemonic []string, list words.List) error {
+	_, err := ExtractEntropy(NormalizeMnemonic(mnemonic), list)
+	if err != nil {
+		return fmt.Errorf("mnemonic validation error: %w", err)
+	}
+
+	return nil
+}
+
+// isValidMnemonicLength returns false if mnemonic length is less than 12, greater than 24, or not divisible by 3
+func isValidMnemonicLength(length int) bool {
+	return length >= MinLength && length <= MaxLength && length%LengthDivisor == 0
 }

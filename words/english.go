@@ -2,6 +2,8 @@ package words
 
 var (
 	english list
+
+	// English BIP-39 words
 	English List
 )
 

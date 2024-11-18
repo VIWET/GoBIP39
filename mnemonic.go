@@ -40,12 +40,13 @@ func ExtractMnemonic(entropy Entropy, list words.List) ([]string, error) {
 	)
 
 	// length is always positive integer in range between 12 and 24
+	// #nosec
 	for index := int(length - 1); index >= 0; index-- {
 		wordIndex := new(big.Int).And(e, mask)
 		e.Rsh(e, GroupBitlen)
 
 		// wordIndex is always positive integer less than 2048
-		word, err := words.At(int(wordIndex.Uint64()))
+		word, err := words.At(int(wordIndex.Uint64())) // #nosec
 		if err != nil {
 			return nil, fmt.Errorf("cannot extract mnemonic: %w", err)
 		}
@@ -75,7 +76,7 @@ func ExtractEntropy(mnemonic []string, list words.List) (Entropy, error) {
 		}
 		e.Lsh(e, GroupBitlen)
 		// wordIndex is always positive integer less than 2048
-		e.Add(e, new(big.Int).SetUint64(uint64(wordIndex)))
+		e.Add(e, new(big.Int).SetUint64(uint64(wordIndex))) // #nosec
 	}
 
 	checksumEntorpy := ChecksumEntropy(PadLeftToBitlen(e.Bytes(), bitlen))
